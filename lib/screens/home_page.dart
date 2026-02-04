@@ -17,11 +17,11 @@ final counterProvider = StateProvider<int>((ref) {
 final userDataProvider = FutureProvider((ref) async {
   // FutureProvider automatically handles loading/error/data states
   // It executes the async function and caches the result
-  await Future.delayed(Duration(seconds: 2)); //simulating api call
+  await Future.delayed(Duration(seconds: 5)); //simulating api call
   return {
-    'name': 'Pashupati Chaudhary',
+    'name': 'Pashupati Chaudharyyyyyyyy',
     'email': 'pashupatic@gmail.com',
-    'age': 30,
+    'age': 300,
   };
 });
 
@@ -151,41 +151,114 @@ class HomePage extends ConsumerWidget {
         body: TabBarView(
           children: [
             SimpleStateTab(),
+            AsyncDataTab(),
+            // TodoListTab(),
+            // CartTab(),
           ],
         ),
       ),
     );
   }
 }
+
 //==========================Tab 1 ================================================
 class SimpleStateTab extends ConsumerWidget {
   const SimpleStateTab({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final counter=ref.watch(counterProvider);
+    final counter = ref.watch(counterProvider);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            'StateProvider Example',
-            style:TextStyle(fontSize:24,fontWeight:FontWeight.bold),
+            'StateProvider Examples',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
-          SizedBox(height:20),
-          Text('Counter:$counter',style:TextStyle(fontSize:24),),
-          SizedBox(height:20),
+          SizedBox(height: 20),
+          Text('Counter:$counter', style: TextStyle(fontSize: 24)),
+          SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              ElevatedButton(onPressed:(){ref.read(counterProvider.notifier).state++;}, child:Text('Increment'),),
+              ElevatedButton(
+                onPressed: () {
+                  ref.read(counterProvider.notifier).state++;
+                },
+                child: Text('Increment'),
+              ),
               Gap.gapw10,
-              ElevatedButton(onPressed:(){ref.read(counterProvider.notifier).state--;}, child:Text('Decrement'),),
+              ElevatedButton(
+                onPressed: () {
+                  ref.read(counterProvider.notifier).state--;
+                },
+                child: Text('Decrement'),
+              ),
               Gap.gapw10,
-              ElevatedButton(onPressed:(){ref.read(counterProvider.notifier).state=0;}, child:Text('Reset'),),
-
+              ElevatedButton(
+                onPressed: () {
+                  ref.read(counterProvider.notifier).state = 0;
+                },
+                child: Text('Reset'),
+              ),
             ],
-          )
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class AsyncDataTab extends ConsumerWidget {
+  const AsyncDataTab({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    //Futureprovider provides AasyncValue<T> with loading/error/data states
+    final userData = ref.watch(userDataProvider);
+    final timer = ref.watch(timerProvider);
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'FutureProvider Example',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 10),
+          userData.when(
+            data: (data) => Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Name:${data['name']}'),
+                    Text('Email:${data['email']}'),
+                    Text('Age:${data['age']}'),
+                  ],
+                ),
+              ),
+            ),
+            error: (err, stack) => Text('Error:${err}'),
+            loading: () => CircularProgressIndicator(),
+          ),
+          SizedBox(height: 30),
+          Text(
+            'StreamProvider Example',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 10),
+          timer.when(
+            data: (data) {
+              return Text(
+                  'Timer:$data seconds', style: TextStyle(fontSize: 24));
+            },
+              error: (err,qwerty) => Text('Error: $err'),
+              loading: () => Text('Waiting for timer...'),
+              ),
         ],
       ),
     );
