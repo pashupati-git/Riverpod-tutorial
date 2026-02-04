@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../constants/gap.dart';
+
 //1.provider--------------------------------------------------------------
 final appThemeProvider = Provider<ThemeData>((ref) {
   return ThemeData(primarySwatch: Colors.blue, brightness: Brightness.light);
@@ -63,25 +65,23 @@ class Todo {
 }
 
 //StateNotifier-Contains buisness logic for state manipulation
-class TodoNotifier extends StateNotifier<TodoState>{
-  TodoNotifier(): super(TodoState(todos:[]));
+class TodoNotifier extends StateNotifier<TodoState> {
+  TodoNotifier() : super(TodoState(todos: []));
 
   //Add a new todo
-  void addTodo(String title){
-    final newTodo=Todo(id: DateTime.now().toString(), title: title);
+  void addTodo(String title) {
+    final newTodo = Todo(id: DateTime.now().toString(), title: title);
 
     //stateNotifier requires creating a new state object(imutable pattern)
-    state=state.copyWith(
-      todos:[...state.todos,newTodo],
-    );
+    state = state.copyWith(todos: [...state.todos, newTodo]);
   }
 
   //Toggle todo completion
-  void toggleTodo(String id){
-    state=state.copyWith(
-      todos:state.todos.map((todo){
-        if(todo.id==id){
-          return todo.copyWith(completed:!todo.completed);
+  void toggleTodo(String id) {
+    state = state.copyWith(
+      todos: state.todos.map((todo) {
+        if (todo.id == id) {
+          return todo.copyWith(completed: !todo.completed);
         }
         return todo;
       }).toList(),
@@ -89,45 +89,105 @@ class TodoNotifier extends StateNotifier<TodoState>{
   }
 
   //Remove a todo
-  void removeTodo(String id){
-    state=state.copyWith(
-      todos:state.todos.where((todo)=>todo.id !=id).toList(),
+  void removeTodo(String id) {
+    state = state.copyWith(
+      todos: state.todos.where((todo) => todo.id != id).toList(),
     );
   }
 
   //Simulate async operation
-  Future<void> loadTodos() async{
-    state=state.copyWith(isLoading:true);
-    await Future.delayed(Duration(seconds:1));
+  Future<void> loadTodos() async {
+    state = state.copyWith(isLoading: true);
+    await Future.delayed(Duration(seconds: 1));
 
-    state=state.copyWith(
-      isLoading:false,
+    state = state.copyWith(
+      isLoading: false,
       todos: [
-        Todo(id:'1',title:'Learn Riverpod'),
-        Todo(id:'2',title:'Build an app'),
+        Todo(id: '1', title: 'Learn Riverpod'),
+        Todo(id: '2', title: 'Build an app'),
       ],
     );
   }
 }
+
 //stateNotifierProvider exposes the StateNotifier
-final todoProvider=StateNotifierProvider<TodoNotifier,TodoState>((ref){
+final todoProvider = StateNotifierProvider<TodoNotifier, TodoState>((ref) {
   return TodoNotifier();
 });
 
+//6. change notifier provider
 
+//7. family modifier
 
+//8. auto dispose modifier
 
+//9. combining modifiers-Family + AutoDispose
+
+//10. computed providers - Derive state from others providers
+
+// ===========================================================================
 //------------------------------main page-------------------------------------
-class HomePage extends ConsumerStatefulWidget {
+class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
-  ConsumerState<HomePage> createState() => _HomePageState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Riverpod 2.0 Examples'),
+          centerTitle: true,
+          bottom: TabBar(
+            //isScrollable: true,
+            tabs: [
+              Tab(text: 'Simple State'),
+              Tab(text: 'Async Data'),
+              Tab(text: 'Todo List'),
+              Tab(text: 'Cart'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            SimpleStateTab(),
+          ],
+        ),
+      ),
+    );
+  }
 }
+//==========================Tab 1 ================================================
+class SimpleStateTab extends ConsumerWidget {
+  const SimpleStateTab({super.key});
 
-class _HomePageState extends ConsumerState<HomePage> {
   @override
-  Widget build(BuildContext context) {
-    return Scaffold();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final counter=ref.watch(counterProvider);
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'StateProvider Example',
+            style:TextStyle(fontSize:24,fontWeight:FontWeight.bold),
+          ),
+          SizedBox(height:20),
+          Text('Counter:$counter',style:TextStyle(fontSize:24),),
+          SizedBox(height:20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton(onPressed:(){ref.read(counterProvider.notifier).state++;}, child:Text('Increment'),),
+              Gap.gapw10,
+              ElevatedButton(onPressed:(){ref.read(counterProvider.notifier).state--;}, child:Text('Decrement'),),
+              Gap.gapw10,
+              ElevatedButton(onPressed:(){ref.read(counterProvider.notifier).state=0;}, child:Text('Reset'),),
+
+            ],
+          )
+        ],
+      ),
+    );
   }
 }
