@@ -3,17 +3,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../constants/gap.dart';
 
-//1.provider--------------------------------------------------------------
+//----------------------------------------------------------------------------------
+//1.provider-simple immutable value that doesn't change
+//usecase:configuration values,constantts,or simple calculated value
 final appThemeProvider = Provider<ThemeData>((ref) {
   return ThemeData(primarySwatch: Colors.blue, brightness: Brightness.light);
 });
 
-//2.state provider---------------------------------------------------------
+//------------------------------------------------------------------------------
+//2.state provider-simple mutable state (like useState in react)
+//use case: Simple values that need to be changed.
 final counterProvider = StateProvider<int>((ref) {
   return 0; //initial value
 });
 
-//3.future provider----------------------------------------------------------
+//-------------------------------------------------------------------------------
+//3.future provider---------------------------------------------------------
+//=
 final userDataProvider = FutureProvider((ref) async {
   // FutureProvider automatically handles loading/error/data states
   // It executes the async function and caches the result
@@ -222,7 +228,7 @@ class HomePage extends ConsumerWidget {
             SimpleStateTab(),
             AsyncDataTab(),
             TodoListTab(),
-            // CartTab(),
+            CartTab(),
           ],
         ),
       ),
@@ -441,6 +447,7 @@ class _TodoListTabState extends ConsumerState<TodoListTab> {
       ],
     );
   }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -448,5 +455,61 @@ class _TodoListTabState extends ConsumerState<TodoListTab> {
   }
 }
 
+//======================TAb 4:Cart(Change Notifier Provider)==================
+class CartTab extends ConsumerWidget {
+  const CartTab({super.key});
 
-//======================TAb 4:Cart(Change Notifier P=rovider)==================
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cart = ref.watch(cartProvider);
+    return Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Items in cart:${cart.itemCount}',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              ElevatedButton(
+                onPressed: cart.itemCount > 0
+                    ? () => ref.read(cartProvider).clear()
+                    : null,
+                child: Text('Clear Cart'),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: cart.items.length,
+            itemBuilder: (context, index) {
+              final item = cart.items[index];
+              return ListTile(
+                title: Text(item),
+                trailing: IconButton(
+                  onPressed: () {
+                    ref.read(cartProvider).removeItem(item);
+                  },
+                  icon: Icon(Icons.remove_circle),
+                ),
+              );
+            },
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.all(16),
+          child: ElevatedButton(
+            onPressed: () {
+              final item = 'Item ${cart.itemCount + 1}';
+              ref.read(cartProvider).addItem(item);
+            },
+            child: Text('Add Item to Cart'),
+          ),
+        ),
+      ],
+    );
+  }
+}
