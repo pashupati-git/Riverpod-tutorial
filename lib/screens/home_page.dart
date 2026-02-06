@@ -115,15 +115,84 @@ final todoProvider = StateNotifierProvider<TodoNotifier, TodoState>((ref) {
   return TodoNotifier();
 });
 
-//6. change notifier provider
+//6. change notifier provider------------------------------------------------
+class CartNotifier extends ChangeNotifier {
+  final List<String> _items = [];
+  List<String> get items => List.unmodifiable(_items);
+  int get itemCount => _items.length;
 
-//7. family modifier
+  void addItem(String item) {
+    _items.add(item);
+    notifyListeners(); //Must manually call notifyListeners() to update UI
+  }
 
-//8. auto dispose modifier
+  void removeItem(String item) {
+    _items.remove(item);
+    notifyListeners();
+  }
 
-//9. combining modifiers-Family + AutoDispose
+  void clear() {
+    _items.clear();
+    notifyListeners();
+  }
+}
+
+final cartProvider = ChangeNotifierProvider<CartNotifier>((ref) {
+  return CartNotifier();
+});
+
+//7. family modifier------------------------------------------------------------
+//create providers with parameters
+final userByIdProvider = FutureProvider.family<String, int>((
+  ref,
+  userId,
+) async {
+  await Future.delayed(Duration(seconds: 1));
+  return 'User data for ID: $userId';
+});
+
+//8. auto dispose modifier------------------------------------------------------
+final searchQueryProvider = StateProvider.autoDispose<String>((ref) {
+  return '';
+});
+
+final searchResultsProvider = FutureProvider.autoDispose<List<String>>((
+  ref,
+) async {
+  final query = ref.watch(searchQueryProvider);
+  //Simulating search Api call
+  await Future.delayed(Duration(milliseconds: 500));
+  if (query.isEmpty) return [];
+  return ['Result 1 for $query', 'Result 2 for $query', 'Result 3 for $query'];
+});
+
+//9. combining modifiers-Family + AutoDispose---------------------------------
+final productByIdProvider = FutureProvider.autoDispose.family<String, int>((
+  ref,
+  productId,
+) async {
+  await Future.delayed(Duration(seconds: 1));
+  return 'Product details for ID: $productId';
+});
 
 //10. computed providers - Derive state from others providers
+//usecase: Calculate values based on other providers
+final completedTodosProvider = Provider<List<Todo>>((ref) {
+  final todoState = ref.watch(todoProvider);
+  return todoState.todos.where((todo) => todo.completed).toList();
+});
+
+final todoStatsProvider = Provider<Map<String, int>>((ref) {
+  final todoState = ref.watch(todoProvider);
+  final completed = todoState.todos.where((t) => t.completed).length;
+  final pending = todoState.todos.length - completed;
+
+  return {
+    'total': todoState.todos.length,
+    'completed': completed,
+    'pending': pending,
+  };
+});
 
 // ===========================================================================
 //------------------------------main page-------------------------------------
@@ -152,7 +221,7 @@ class HomePage extends ConsumerWidget {
           children: [
             SimpleStateTab(),
             AsyncDataTab(),
-            // TodoListTab(),
+            TodoListTab(),
             // CartTab(),
           ],
         ),
@@ -161,7 +230,7 @@ class HomePage extends ConsumerWidget {
   }
 }
 
-//==========================Tab 1 ================================================
+//==========================Tab 1 (State Provider)  ================================================
 class SimpleStateTab extends ConsumerWidget {
   const SimpleStateTab({super.key});
 
@@ -210,6 +279,7 @@ class SimpleStateTab extends ConsumerWidget {
   }
 }
 
+//===========tab 2 : Async Data (FutureProvider and StreamProvider)==================
 class AsyncDataTab extends ConsumerWidget {
   const AsyncDataTab({super.key});
 
@@ -254,13 +324,129 @@ class AsyncDataTab extends ConsumerWidget {
           timer.when(
             data: (data) {
               return Text(
-                  'Timer:$data seconds', style: TextStyle(fontSize: 24));
+                'Timer:$data seconds',
+                style: TextStyle(fontSize: 24),
+              );
             },
-              error: (err,qwerty) => Text('Error: $err'),
-              loading: () => Text('Waiting for timer...'),
-              ),
+            error: (err, qwerty) => Text('Error: $err'),
+            loading: () => Text('Waiting for timer...'),
+          ),
         ],
       ),
     );
   }
 }
+
+//===================================tab 3=====================//
+class TodoListTab extends ConsumerStatefulWidget {
+  const TodoListTab({super.key});
+
+  @override
+  ConsumerState<TodoListTab> createState() => _TodoListTabState();
+}
+
+class _TodoListTabState extends ConsumerState<TodoListTab> {
+  final _controller = TextEditingController();
+
+  @override
+  void initState() {
+    Future.microtask(() => ref.read(todoProvider.notifier).loadTodos());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final todoState = ref.watch(todoProvider);
+    final stats = ref.watch(todoStatsProvider);
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        hintText: 'Enter Todo title',
+                      ),
+                    ),
+                  ),
+                  Gap.gapw10,
+                  ElevatedButton(
+                    onPressed: () {
+                      if (_controller.text.isNotEmpty) {
+                        ref
+                            .read(todoProvider.notifier)
+                            .addTodo(_controller.text);
+                        _controller.clear();
+                      }
+                    },
+                    child: Text('Add Todo'),
+                  ),
+                ],
+              ),
+              SizedBox(height: 10),
+              Card(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      Text('Total:${stats['total']}'),
+                      Text('Completed:${stats['completed']}'),
+                      Text('Pending:${stats['pending']}'),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (todoState.isLoading)
+          CircularProgressIndicator()
+        else
+          Expanded(
+            child: ListView.builder(
+              itemCount: todoState.todos.length,
+              itemBuilder: (context, index) {
+                final todo = todoState.todos[index];
+                return ListTile(
+                  leading: Checkbox(
+                    value: todo.completed,
+                    onChanged: (_) {
+                      ref.read(todoProvider.notifier).toggleTodo(todo.id);
+                    },
+                  ),
+                  title: Text(
+                    todo.title,
+                    style: TextStyle(
+                      decoration: todo.completed
+                          ? TextDecoration.lineThrough
+                          : null,
+                    ),
+                  ),
+                  trailing: IconButton(
+                    onPressed: () {
+                      ref.read(todoProvider.notifier).removeTodo(todo.id);
+                    },
+                    icon: Icon(Icons.delete),
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+}
+
+
+//======================TAb 4:Cart(Change Notifier P=rovider)==================
